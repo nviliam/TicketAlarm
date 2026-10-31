@@ -18,9 +18,9 @@ jobs:
     if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      TICKETALARM_STATE_WORKTREE: ${{ runner.temp }}/ticketalarm-state
     steps:
+      - name: Set temporary state directory
+        run: echo "TICKETALARM_STATE_WORKTREE=$RUNNER_TEMP/ticketalarm-state" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
