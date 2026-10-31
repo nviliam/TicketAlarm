@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.ticketalarm/
+.ticketalarm-state/
+probe-results.json
+probe-control-results.json
+*.log
+*.pem
+*.key
+credentials*.json
+secrets*.json

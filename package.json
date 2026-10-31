@@ -1,0 +1,24 @@
+{
+  "name": "ticketalarm",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "probe": "node probe.ts",
+    "notify:preview": "node notify.ts",
+    "notify": "node --env-file=.env notify.ts --send",
+    "smtp:test": "node --env-file=.env smtp-test.ts",
+    "test": "node --test notifications.test.ts remote-state.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "nodemailer": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
+    "typescript": "^7.0.2"
+  }
+}

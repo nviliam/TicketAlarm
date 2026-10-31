@@ -1,0 +1,49 @@
+name: TicketAlarm
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# One shared group across manual and scheduled runs, regardless of selected branch.
+concurrency:
+  group: ticketalarm-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TICKETALARM_STATE_WORKTREE: ${{ runner.temp }}/ticketalarm-state
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - name: Restore durable notification state (or initialize once)
+        id: state
+        run: node remote-state.ts restore
+      - name: Read current ticket availability
+        run: node probe.ts
+      - name: Notify by Gmail
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+        # No .env file is read or generated in Actions.
+        run: |
+          test -n "$GMAIL_USER" && test -n "$GMAIL_APP_PASSWORD" && test -n "$NOTIFY_EMAIL"
+          node notify.ts --send
+      - name: Save state even after a failed notification step
+        if: always() && steps.state.outcome == 'success'
+        run: node remote-state.ts save
