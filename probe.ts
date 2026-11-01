@@ -37,7 +37,7 @@ const results: any[] = [];
 for (const event of events) {
   if ((!controlOnly && !event.actors?.some((a: any) => a.id === 6)) || event.city?.name !== 'Budapest') continue;
   const result: any = {
-    slug: event.slug, dateFromRaw: event.date_from,
+    slug: event.slug, title: event.program?.name, dateFromRaw: event.date_from,
     // Source dates carry Z, but the published page treats the hour as local.
     // Preserve raw values; do not silently convert them to Budapest time.
     venue: event.audit?.name, sourceAvailableTickets: event.available_tickets,

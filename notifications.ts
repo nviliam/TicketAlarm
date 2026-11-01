@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
 import { mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { renderTicketEmail } from './email-template.ts';
 
-export type Notice = { eventId: string; fingerprint: string; subject: string; text: string };
+export type Notice = { eventId: string; fingerprint: string; subject: string; text: string; html?: string };
 type Result = {
-  slug?: string; dateFromRaw?: string; venue?: string; ticketUrl?: string;
+  slug?: string; title?: string; dateFromRaw?: string; venue?: string; ticketUrl?: string;
   checkedAt?: string; availability?: string; freeSeats?: number;
   freeSeatIds?: number[];
   sameTablePairs?: { table: string; seats: { id: number; label?: string }[] }[];
@@ -35,22 +36,21 @@ export function makeNotice(result: Result, now = Date.now()): Notice | null {
   const eventId = `${ids[1]}/${ids[2]}`;
   const fingerprint = createHash('sha256').update(JSON.stringify({ eventId,
     date: date[0], venue: result.venue, tables, freeSeatIds })).digest('hex');
+  const content = renderTicketEmail({
+    title: result.title?.trim() || 'Bödőcs Tibor előadása – a pontos cím nem érhető el',
+    date: date[1], time: date[2], venue: result.venue, ticketUrl: url.href,
+    confirmation: tables.length
+      ? 'A friss ülőhelyadatok legalább 2 szabad helyet jeleznek ugyanannál az asztalnál.'
+      : 'A friss ülőhelyadatok legalább 2 szabad jegyet jeleznek. A közvetlen szomszédosság nem igazolt.',
+    details: tables.length
+      ? `Asztalok: ${tables.map(t => t.table).join(', ')}. Az azonos asztal nem feltétlenül jelent közvetlenül egymás melletti széket.`
+      : `Szabad helyek száma: ${freeSeatIds.length}`,
+    checkedAt: result.checkedAt,
+  });
   return {
     eventId, fingerprint,
     subject: `TicketALarm: legalább 2 szabad jegy – ${date[1]} ${date[2]}`,
-    text: [
-      'Bödőcs Tibor budapesti előadására jegyek érhetők el.',
-      `Időpont: ${date[1]} ${date[2]} (budapesti helyi idő)`,
-      `Helyszín: ${result.venue}`,
-      tables.length
-        ? 'A friss ülőhelyadatok legalább 2 szabad helyet jeleznek ugyanannál az asztalnál.'
-        : 'A friss ülőhelyadatok legalább 2 szabad jegyet jeleznek. A közvetlen szomszédosság nem igazolt.',
-      tables.length ? `Asztalok: ${tables.map(t => t.table).join(', ')}` : `Szabad helyek száma: ${freeSeatIds.length}`,
-      tables.length ? 'Az azonos asztal nem feltétlenül jelent közvetlenül egymás melletti széket.' : '',
-      `Jegyvásárlás: ${url.href}`,
-      `Ellenőrzés: ${result.checkedAt}`,
-      'Az elérhetőség változhat. A program nem foglalt és nem vásárolt jegyet.',
-    ].join('\n'),
+    ...content,
   };
 }
 

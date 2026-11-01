@@ -5,10 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeNotice, sendNotices } from './notifications.ts';
 import { parseRecipients, sendEmail } from './email.ts';
+import { renderTicketEmail, renderTestEmail } from './email-template.ts';
+import nodemailer from 'nodemailer';
 
 const now = Date.now();
 const result = {
   slug: 'innen-mar-csak-gurulunk-bodocs-tibor-2026-12-21-1930',
+  title: 'Innen már csak gurulunk – Bödőcs Tibor önálló estje, előzenekar: Tóth Edu',
   dateFromRaw: '2026-12-21T19:30:00.000000Z', venue: 'Corvin Dumaszínház',
   ticketUrl: 'https://dumaszinhaz.jegy.hu/program/bodocs-tibor-183958/1501273',
   checkedAt: new Date(now).toISOString(), availability: 'observed', freeSeats: 2,
@@ -35,6 +38,7 @@ test('all recipients receive the same message through the mocked mail transport'
       assert.deepEqual(message.to, recipients);
       assert.equal(message.subject, notice.subject);
       assert.equal(message.text, notice.text);
+      assert.equal(message.html, notice.html);
       return { accepted: recipients, rejected: [] };
     }, 'felado@gmail.com', recipients, notice);
     assert.equal(calls, 1);
@@ -60,6 +64,67 @@ test('message includes published local time, venue, confirmed pair and direct li
   assert.ok(notice);
   for (const text of ['2026-12-21 19:30', result.venue, 'legalább 2 szabad', result.ticketUrl])
     assert.ok(notice.text.includes(text));
+  for (const text of [result.title, 'Bödőcs Tibor', '2026-12-21', '19:30', result.venue,
+    'JEGYVÁSÁRLÁS', `href="${result.ticketUrl}"`, 'legalább 2 szabad'])
+    assert.ok(notice.html!.includes(text));
+  assert.ok(notice.text.includes(result.title));
+  assert.ok(!notice.html!.includes('MINTAADATOK'));
+  assert.ok(notice.html!.includes('max-width:600px'));
+  assert.ok(notice.html!.includes('name="viewport"'));
+  assert.ok(notice.html!.includes('role="presentation"'));
+});
+
+test('dynamic HTML data is escaped; unsafe or non-ticket links are rejected', () => {
+  const input = {
+    title: '<img src=x onerror="alert(1)"> & koncert',
+    date: '2026-12-21', time: '19:30', venue: '<script>alert(1)</script>',
+    ticketUrl: result.ticketUrl + '?a=1&b=%22onclick%3D%22test',
+    confirmation: '<b>Legalább 2</b>', details: '"helyek" & <asztal>',
+    checkedAt: '<iframe>',
+  };
+  const rendered = renderTicketEmail(input);
+  for (const tag of ['<img', '<script', '<iframe', '<b>Legalább']) assert.ok(!rendered.html.includes(tag));
+  assert.ok(rendered.html.includes('&lt;img src=x onerror=&quot;alert(1)&quot;&gt; &amp; koncert'));
+  assert.ok(rendered.html.includes('?a=1&amp;b=%22onclick%3D%22test'));
+  assert.ok(rendered.text.includes(input.title));
+  assert.ok(rendered.text.includes(input.ticketUrl));
+  assert.ok(!rendered.text.includes('&lt;'));
+  for (const ticketUrl of ['javascript:alert(1)', 'http://dumaszinhaz.jegy.hu/program/a-1/2',
+    'https://dumaszinhaz.jegy.hu.evil.example/program/a-1/2',
+    'https://user:pass@dumaszinhaz.jegy.hu/program/a-1/2',
+    'https://dumaszinhaz.jegy.hu/basket', 'not a url'])
+    assert.throws(() => renderTicketEmail({ ...input, ticketUrl }));
+});
+
+test('MIME message contains HTML and plain text without contacting SMTP', async () => {
+  const notice = makeNotice(result, now)!;
+  const transport = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: 'unix' });
+  const info = await transport.sendMail({
+    from: 'sender@example.com', to: ['first@example.com', 'second@example.com'],
+    subject: notice.subject, text: notice.text, html: notice.html,
+  });
+  const mime = info.message.toString();
+  assert.ok(mime.includes('multipart/alternative'));
+  assert.ok(mime.includes('Content-Type: text/plain; charset=utf-8'));
+  assert.ok(mime.includes('Content-Type: text/html; charset=utf-8'));
+  assert.deepEqual(info.envelope.to, ['first@example.com', 'second@example.com']);
+});
+
+test('SMTP template test is clearly marked in HTML and text', () => {
+  const content = renderTestEmail();
+  for (const version of [content.html, content.text]) {
+    assert.ok(version.includes('TESZT ÉRTESÍTÉS · MINTAADATOK'));
+    assert.ok(version.includes('nem igazolnak aktuális jegyelérhetőséget'));
+  }
+});
+
+test('title is dynamic and presentation changes do not alter notification fingerprint', () => {
+  const first = makeNotice(result, now)!;
+  const second = makeNotice({ ...result, title: 'Valós új előadáscím & részletek' }, now)!;
+  assert.equal(first.fingerprint, second.fingerprint);
+  assert.ok(second.text.includes('Valós új előadáscím & részletek'));
+  assert.ok(second.html!.includes('Valós új előadáscím &amp; részletek'));
+  assert.ok(!second.html!.includes(result.title));
 });
 
 test('unknown, stale, control, unpaired and duplicate-seat data never alert', () => {

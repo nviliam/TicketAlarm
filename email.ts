@@ -14,7 +14,7 @@ export async function sendEmail(
   sendMail: (message: SendMailOptions) => Promise<{ accepted?: unknown[]; rejected?: unknown[] }>,
   from: string, recipients: string[], notice: Notice,
 ): Promise<void> {
-  const info = await sendMail({ from, to: recipients, subject: notice.subject, text: notice.text });
+  const info = await sendMail({ from, to: recipients, subject: notice.subject, text: notice.text, html: notice.html });
   if (info.accepted?.length !== recipients.length || info.rejected?.length)
     throw new Error('Az SMTP-kiszolgáló nem fogadta el az összes címzettet.');
 }

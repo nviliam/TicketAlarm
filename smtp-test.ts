@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { mailbox, parseRecipients, sendEmail } from './email.ts';
+import { renderTestEmail } from './email-template.ts';
 
 // Standalone manual SMTP test. Does not load ticket data or notification state.
 async function testSmtp(): Promise<void> {
@@ -17,8 +18,7 @@ async function testSmtp(): Promise<void> {
     await sendEmail(message => transport.sendMail(message), user, recipients, {
       eventId: 'smtp-test', fingerprint: 'smtp-test',
       subject: 'TicketAlarm – Teszt értesítés',
-      text: 'Ez a TicketAlarm Gmail SMTP-tesztüzenete.\n'
-        + 'A küldés független a jegyelérhetőségtől. Nem történt jegyfoglalás vagy vásárlás.',
+      ...renderTestEmail(),
     });
     console.log(`SMTP-küldés sikeres: a kiszolgáló mind a(z) ${recipients.length} címzettet elfogadta.`);
     console.log('A kézbesítést a címzettek postaládájában és a Spam mappában ellenőrizheted.');

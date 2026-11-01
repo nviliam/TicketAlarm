@@ -30,6 +30,8 @@ npm.cmd run smtp:test
 
 Ez valódi „TicketAlarm – Teszt értesítés” tárgyú e-mailt küld a `NOTIFY_EMAIL` összes címzettjének. A konzol jelzi a sikeres SMTP-elfogadást vagy a hiba jellegét; alkalmazásjelszót és nyers SMTP-hibát nem naplóz. A teszt nem olvassa vagy módosítja a jegyfigyelő állapotát. A sikeres SMTP-elfogadás után a postaládában (és a Spam mappában) ellenőrizd a kézbesítést.
 
+A levél táblázatos, inline CSS-t használó HTML-sablonnal és egyszerű szöveges alternatívával készül. A tesztlevélben jól látható **TESZT ÉRTESÍTÉS · MINTAADATOK** felirat van: nem állít tényleges jegyelérhetőséget. Az éles értesítés címe a `probe.ts` által lekért `program.name` adatból származik; a helyszín, dátum, időpont és Jegy.hu-link szintén az aktuális adatokból kerül be. Régi, címet még nem tartalmazó pillanatképnél kifejezetten jelezzük a cím hiányát, nem helyettesítjük mintacímmel. A dinamikus HTML-szöveg escape-elt, a gomb csak ellenőrzött HTTPS-es Dumaszínház/Jegy.hu előadáslinket fogad el. A sablonfrissítés önmagában nem változtatja meg az értesítés lenyomatát, ezért nem okoz újraküldést.
+
 ```powershell
 node probe.ts
 node notify.ts
@@ -73,7 +75,7 @@ A projektmappában PowerShellből futtasd az alábbiakat. A `SAJAT_FELHASZNALONE
 ```powershell
 git init -b main
 git add .gitignore .env.example .github README.md RESEARCH.md package.json package-lock.json tsconfig.json
-git add probe.ts notify.ts notifications.ts email.ts smtp-test.ts notifications.test.ts remote-state.ts remote-state.test.ts
+git add probe.ts notify.ts notifications.ts email.ts email-template.ts smtp-test.ts notifications.test.ts remote-state.ts remote-state.test.ts
 git check-ignore .env
 git diff --cached --name-only
 ```

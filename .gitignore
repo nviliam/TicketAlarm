@@ -6,6 +6,7 @@ node_modules/
 .ticketalarm-state/
 probe-results.json
 probe-control-results.json
+email-preview.html
 *.log
 *.pem
 *.key
