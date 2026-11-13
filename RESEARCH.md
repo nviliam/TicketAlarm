@@ -1,6 +1,6 @@
 # TicketALarm – jegyelérhetőségi próba
 
-Ellenőrzés: 2026. október 31. A teljes figyelő, ütemezés és értesítés még nincs megépítve.
+Történeti felderítési jegyzet, 2026. október 31-i megfigyelésekkel; nem aktuális jegyelérhetőségi jelentés. Az ekkor még hiányzó figyelő, ütemezés és értesítés azóta elkészült. A projekt jelenlegi állapotát és telepítését a [README.md](README.md) ismerteti.
 
 ## Futtatás
 
